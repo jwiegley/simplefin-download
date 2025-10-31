@@ -4,16 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SimpleFin Download is a Haskell CLI application for the SimpleFin API. It retrieves bank account and transaction data using type-safe HTTP requests and comprehensive error handling.
+SimpleFin Download is a Haskell CLI application for the SimpleFin API. It retrieves bank account and transaction data using type-safe HTTP requests and comprehensive error handling, with support for Ledger journal format output.
 
 **Key characteristics:**
 - Pure Haskell implementation with GHC 9.8+
-- Library structure with 4 modules under `src/SimpleFin/`
-- CLI entry point in `app/Main.hs`
+- Library structure with 5 modules under `src/SimpleFin/`
+- CLI entry point in `app/Main.hs` with `--ledger` flag support
 - Type safety via newtypes (SetupToken, ClaimUrl, AccessUrl, etc.)
 - ExceptT monad transformer for error propagation
 - Uses `req` library for HTTP, `aeson` for JSON
-- Comprehensive test suite with 86 tests (95.3% pass rate)
+- Integrates `trade-journal` library for Ledger format output
+- Comprehensive test suite with 107 tests (100% pass rate)
 
 ## Build Commands
 
@@ -23,11 +24,14 @@ SimpleFin Download is a Haskell CLI application for the SimpleFin API. It retrie
 # Enter Nix development environment (recommended)
 nix-shell
 
-# Build the project
+# Build the project (requires mpfr library)
 cabal build
 
 # Run the executable
 cabal run simplefin-download
+
+# Run with Ledger format output
+cabal run simplefin-download -- --ledger
 
 # Build with specific GHC
 cabal build --with-compiler=ghc-9.8

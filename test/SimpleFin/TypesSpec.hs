@@ -11,8 +11,7 @@ import Data.Time.Clock.POSIX (POSIXTime)
 import SimpleFin.Types
 import Test.Hspec
 import Test.QuickCheck hiding (Success)
-import Test.QuickCheck.Instances.Text ()
-import Test.QuickCheck.Instances.Time ()
+import SimpleFin.TestInstances () -- Custom Arbitrary instances
 
 spec :: Spec
 spec = do

@@ -11,6 +11,7 @@ A modern Haskell implementation of the SimpleFin API client for retrieving accou
 - HTTP Basic Authentication with timeout support
 - JSON parsing with Aeson
 - Local timezone-aware timestamp formatting
+- **Ledger journal format output** (using trade-journal library)
 - Full feature parity with the Python version
 
 ## Prerequisites
@@ -18,10 +19,21 @@ A modern Haskell implementation of the SimpleFin API client for retrieving accou
 - GHC 9.8 or later
 - Cabal or Stack
 - (Optionally) Nix for reproducible builds
+- **macOS only**: mpfr and gmp libraries (for the trade-journal dependency)
+
+### macOS Setup
+
+The `trade-journal` dependency requires `mpfr` and `gmp` libraries. Install them via Homebrew:
+
+```bash
+brew install mpfr gmp
+```
+
+The project includes a `cabal.project.local` file that configures the library paths for Homebrew on Apple Silicon. If you're using Intel Mac, you may need to adjust the paths from `/opt/homebrew` to `/usr/local`.
 
 ## Building
 
-### With Nix
+### With Nix (Recommended)
 
 ```bash
 nix-shell
@@ -34,6 +46,8 @@ cabal build
 cabal update
 cabal build
 ```
+
+The `cabal.project.local` file automatically configures the paths to the Homebrew-installed libraries.
 
 ### With Stack
 
@@ -60,6 +74,17 @@ simplefin-download
 # Subsequent runs: use saved access URL
 export SIMPLEFIN_ACCESS_URL="https://username:password@host/path"
 simplefin-download
+```
+
+### Ledger Format Output
+
+```bash
+# Output in Ledger journal format
+simplefin-download --ledger
+
+# Save to file for use with ledger-cli
+simplefin-download --ledger > accounts.ledger
+ledger -f accounts.ledger balance
 ```
 
 ## Environment Variables

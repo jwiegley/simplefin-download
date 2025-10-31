@@ -19,7 +19,10 @@ Environment Variables:
     SIMPLEFIN_ACCESS_URL: Pre-claimed access URL (skips claiming step)
 
 Usage:
-    simplefin-download
+    simplefin-download [--ledger]
+
+Options:
+    --ledger    Output in Ledger journal format instead of default format
 -}
 module Main (main) where
 
@@ -28,9 +31,23 @@ import Control.Monad (when)
 import Control.Monad.Except (ExceptT, runExceptT, throwError)
 import Control.Monad.IO.Class (liftIO)
 import Data.Text qualified as T
+import Options.Applicative
+  ( Parser
+  , execParser
+  , fullDesc
+  , header
+  , help
+  , helper
+  , info
+  , long
+  , progDesc
+  , switch
+  , (<**>)
+  )
 import SimpleFin.API (claimAccessUrl, fetchAccounts)
 import SimpleFin.Auth (decodeSetupToken, parseAccessUrl)
 import SimpleFin.Format (formatAccounts, getPasswordInput)
+import SimpleFin.Ledger (renderLedger)
 import SimpleFin.Types
   ( AccessUrl (..)
   , SetupToken (..)
@@ -41,9 +58,24 @@ import System.Environment (lookupEnv)
 import System.Exit (ExitCode (..), exitSuccess, exitWith)
 import System.IO (hPutStrLn, stderr)
 
+-- | Command-line options
+data Options = Options
+  { optLedger :: Bool
+  -- ^ Output in Ledger format
+  }
+
+-- | Command-line parser
+optionsParser :: Parser Options
+optionsParser =
+  Options
+    <$> switch
+      ( long "ledger"
+          <> help "Output in Ledger journal format"
+      )
+
 -- | Main application logic using ExceptT for error handling
-runSimplefin :: ExceptT SimplefinError IO ()
-runSimplefin = do
+runSimplefin :: Options -> ExceptT SimplefinError IO ()
+runSimplefin opts = do
   -- Check if access URL is already available
   maybeAccessUrl <- liftIO $ lookupEnv "SIMPLEFIN_ACCESS_URL"
 
@@ -93,13 +125,25 @@ runSimplefin = do
     Left err -> throwError err
     Right data_ -> pure data_
 
-  -- Format and display
-  liftIO $ formatAccounts accountData
+  -- Format and display based on options
+  liftIO $
+    if optLedger opts
+      then renderLedger accountData
+      else formatAccounts accountData
 
 -- | Main entry point with error handling
 main :: IO ()
 main = do
-  result <- runExceptT runSimplefin
+  opts <-
+    execParser $
+      info
+        (optionsParser <**> helper)
+        ( fullDesc
+            <> progDesc "SimpleFin API client for retrieving account and transaction data"
+            <> header "simplefin-download - SimpleFin API Client"
+        )
+
+  result <- runExceptT (runSimplefin opts)
   case result of
     Left err -> do
       hPutStrLn stderr $ "Error: " <> showError err

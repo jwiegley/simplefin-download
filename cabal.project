@@ -1,0 +1,6 @@
+packages:
+  .
+  ../trade-journal
+
+-- Allow newer versions of dependencies
+allow-newer: all

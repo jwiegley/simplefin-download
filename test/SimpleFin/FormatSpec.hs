@@ -9,8 +9,7 @@ import SimpleFin.Types
 import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
-import Test.QuickCheck.Instances.Text ()
-import Test.QuickCheck.Instances.Time ()
+import SimpleFin.TestInstances () -- Custom Arbitrary instances
 
 spec :: Spec
 spec = do

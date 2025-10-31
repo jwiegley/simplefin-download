@@ -26,6 +26,10 @@ dependencies:
   - scientific >= 0.3
   - transformers >= 0.6
   - exceptions >= 0.10
+  - simple-amount >= 0.2.0
+  - containers >= 0.6
+  - lens >= 5.0
+  - trade-journal
 
 default-extensions:
   - OverloadedStrings
@@ -55,6 +59,7 @@ library:
     - SimpleFin.Auth
     - SimpleFin.API
     - SimpleFin.Format
+    - SimpleFin.Ledger
 
 executables:
   simplefin-download:
@@ -62,6 +67,8 @@ executables:
     source-dirs: app
     dependencies:
       - simplefin-download
+      - trade-journal
+      - optparse-applicative >= 0.18
     ghc-options:
       - -threaded
       - -rtsopts
@@ -73,6 +80,7 @@ tests:
     source-dirs: test
     dependencies:
       - simplefin-download
+      - trade-journal
       - hspec >= 2.11
       - hspec-discover >= 2.11
       - QuickCheck >= 2.14

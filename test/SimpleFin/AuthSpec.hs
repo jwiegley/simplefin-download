@@ -8,7 +8,7 @@ import SimpleFin.Auth
 import SimpleFin.Types
 import Test.Hspec
 import Test.QuickCheck
-import Test.QuickCheck.Instances.Text ()
+import SimpleFin.TestInstances () -- Custom Arbitrary instances
 
 spec :: Spec
 spec = do
