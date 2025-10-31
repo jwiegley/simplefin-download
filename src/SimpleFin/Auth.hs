@@ -35,13 +35,28 @@ import SimpleFin.Types
 -- >>> decodeSetupToken (SetupToken "aHR0cHM6Ly9leGFtcGxlLmNvbS9jbGFpbQ==")
 -- Right (ClaimUrl "https://example.com/claim")
 decodeSetupToken :: SetupToken -> Either SimplefinError ClaimUrl
-decodeSetupToken (SetupToken token) =
-  case Base64.decode (TE.encodeUtf8 token) of
-    Left err -> Left $ Base64DecodeError err
-    Right decoded ->
-      case TE.decodeUtf8' decoded of
-        Left err -> Left $ Base64DecodeError (show err)
-        Right url -> Right $ ClaimUrl url
+decodeSetupToken (SetupToken token)
+  | T.null token = Left $ Base64DecodeError "Empty token"
+  | otherwise =
+      let -- Add padding if needed for lenient base64 decoding
+          paddedToken = addBase64Padding token
+       in case Base64.decode (TE.encodeUtf8 paddedToken) of
+            Left err -> Left $ Base64DecodeError err
+            Right decoded ->
+              case TE.decodeUtf8' decoded of
+                Left err -> Left $ Base64DecodeError (show err)
+                Right url
+                  | T.null url -> Left $ Base64DecodeError "Decoded URL is empty"
+                  | otherwise -> Right $ ClaimUrl url
+
+-- | Add padding to base64 string if needed
+addBase64Padding :: Text -> Text
+addBase64Padding txt =
+  let len = T.length txt
+      remainder = len `mod` 4
+   in if remainder == 0
+        then txt
+        else txt <> T.replicate (4 - remainder) "="
 
 -- | Parse access URL to extract credentials and base URL.
 --
@@ -60,14 +75,23 @@ parseAccessUrl (AccessUrl url) = do
   auth <- maybe (Left InvalidCredentials) Right $ NetURI.uriAuthority uri
 
   let userInfo = NetURI.uriUserInfo auth
-  (username, passwordWithColon) <- case break (== ':') userInfo of
-    (u, ':' : p) -> Right (u, dropWhile (== '@') p)
+
+  -- Parse username and password from userInfo
+  -- userInfo format is "username:password@" (note the trailing @)
+  when (null userInfo || not ('@' `elem` userInfo)) $
+    Left InvalidCredentials
+
+  -- Remove trailing @ from userInfo
+  let userInfoNoAt = reverse . dropWhile (== '@') . reverse $ userInfo
+
+  (username, passwordWithColon) <- case break (== ':') userInfoNoAt of
+    (u, ':' : p) -> Right (u, p)
     _ -> Left InvalidCredentials
 
   when (null username || null passwordWithColon) $
     Left InvalidCredentials
 
-  let password = takeWhile (/= '@') passwordWithColon
+  let password = passwordWithColon
       scheme = NetURI.uriScheme uri
       host = NetURI.uriRegName auth
       port = NetURI.uriPort auth

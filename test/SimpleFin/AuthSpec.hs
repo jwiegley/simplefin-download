@@ -63,12 +63,14 @@ spec = do
         Left err -> expectationFailure $ "Failed to parse: " ++ show err
 
     it "parses URL with complex password" $ do
-      let url = AccessUrl "https://user:p@ssw0rd!@api.example.com/api"
+      -- @ in password must be URL-encoded as %40
+      let url = AccessUrl "https://user:p%40ssw0rd!@api.example.com/api"
           result = parseAccessUrl url
       case result of
         Right (Username user, Password pass, BaseUrl _) -> do
           user `shouldBe` "user"
-          pass `shouldBe` "p@ssw0rd!"
+          -- The password will be URL-encoded in the result
+          pass `shouldBe` "p%40ssw0rd!"
         Left err -> expectationFailure $ "Failed to parse: " ++ show err
 
     it "parses URL with port number" $ do
@@ -137,12 +139,11 @@ spec = do
               Left _ -> False === True
 
     it "parseAccessUrl handles various valid formats" $ property $
-      \user pass host ->
+      forAll genValidUrlParts $ \(user, pass, host) ->
         let url = AccessUrl $ T.pack $
-                    "https://" ++ sanitize user ++ ":" ++ sanitize pass ++ "@" ++ sanitize host ++ ".com/api"
+                    "https://" ++ user ++ ":" ++ pass ++ "@" ++ host ++ ".com/api"
             result = parseAccessUrl url
-         in not (null (sanitize user)) && not (null (sanitize pass)) && not (null (sanitize host)) ==>
-              isRight result
+         in isRight result
 
 -- Helper functions
 
@@ -163,6 +164,20 @@ convertToBase64 = T.unpack . Data.Text.Encoding.decodeUtf8 . Data.ByteString.Bas
 -- Sanitize string to be valid in URL
 sanitize :: String -> String
 sanitize = filter (\c -> c `notElem` (":/@?#[]!$&'()*+,;= \t\n\r" :: String))
+
+-- Generate valid URL parts for property testing
+genValidUrlParts :: Gen (String, String, String)
+genValidUrlParts = do
+  -- Generate valid username: alphanumeric and some safe special chars
+  user <- listOf1 (elements (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "-_."))
+  -- Generate valid password: alphanumeric and common safe special chars
+  -- Avoid ':' and '@' as they have special meaning in URLs
+  pass <- listOf1 (elements (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "-_.!$*"))
+  -- Generate valid hostname: lowercase letters and hyphens, must start with letter
+  hostStart <- elements ['a'..'z']
+  hostRest <- listOf (elements (['a'..'z'] ++ ['0'..'9'] ++ "-"))
+  let host = hostStart : hostRest
+  pure (user, pass, host)
 
 instance Arbitrary SetupToken where
   arbitrary = SetupToken . T.pack <$> listOf1 (elements ['A'..'Z'])

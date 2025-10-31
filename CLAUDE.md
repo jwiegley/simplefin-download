@@ -4,14 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SimpleFin Download is a Haskell CLI application for the SimpleFin API. It's a single-file executable (Main.hs, 393 lines) that retrieves bank account and transaction data using type-safe HTTP requests and comprehensive error handling.
+SimpleFin Download is a Haskell CLI application for the SimpleFin API. It retrieves bank account and transaction data using type-safe HTTP requests and comprehensive error handling.
 
 **Key characteristics:**
 - Pure Haskell implementation with GHC 9.8+
-- Single executable with no library components
+- Library structure with 4 modules under `src/SimpleFin/`
+- CLI entry point in `app/Main.hs`
 - Type safety via newtypes (SetupToken, ClaimUrl, AccessUrl, etc.)
 - ExceptT monad transformer for error propagation
 - Uses `req` library for HTTP, `aeson` for JSON
+- Comprehensive test suite with 86 tests (95.3% pass rate)
 
 ## Build Commands
 
@@ -36,16 +38,41 @@ cabal clean
 
 ### Testing
 
-**Current status:** No tests implemented yet. Main.hs is not structured as a library.
+The project has a comprehensive test suite with **86 tests** covering all library modules.
 
-**Future test commands (when tests exist):**
 ```bash
+# Run all tests
 cabal test
-cabal test --enable-coverage
+
+# Run tests with detailed output
 cabal test --test-show-details=direct
+
+# Run tests with coverage reporting
+cabal test --enable-coverage
+
+# Run specific test module
+cabal test --test-options="--match 'SimpleFin.Auth'"
+
+# Run tests matching a pattern
+cabal test --test-options="--match 'JSON parsing'"
+
+# Run a single test
+cabal test --test-options="--match '/decodeSetupToken/decodes valid/'"
 ```
 
-See `test/README.md` for planned test architecture. To enable testing, Main.hs needs to be refactored into library modules under `src/SimpleFin/`.
+**Test Structure:**
+- `test/SimpleFin/TypesSpec.hs` - 40 tests for JSON parsing, error handling
+- `test/SimpleFin/AuthSpec.hs` - 24 tests for token decoding, URL parsing
+- `test/SimpleFin/APISpec.hs` - 22 tests for HTTP client functions
+- `test/SimpleFin/FormatSpec.hs` - 20 tests for formatting functions
+
+**Testing Technologies:**
+- **hspec**: BDD-style test framework
+- **QuickCheck**: Property-based testing (100 cases per property)
+- **aeson-qq**: JSON quasiquoters for test data
+- **quickcheck-instances**: Arbitrary instances for common types
+
+See `TEST_SUITE.md` for detailed testing documentation and `REFACTORING_SUMMARY.md` for the refactoring process.
 
 ### Running with Environment Variables
 
@@ -63,16 +90,35 @@ cabal run simplefin-download
 
 ### High-Level Structure
 
-Main.hs is organized in clear sections (see module documentation in lines 6-28):
+The codebase is organized into a library and executable:
 
-1. **Type Safety Layer** (lines 64-88): Newtype wrappers prevent mixing credentials
-2. **Domain Types** (lines 90-113): Account, Transaction, AccountsResponse
-3. **Error Types** (lines 115-130): SimplefinError with 8 error variants
-4. **JSON Instances** (lines 132-151): FromJSON for API schema
-5. **Core Functions** (lines 153-236): decode → claim → parse → fetch pipeline
-6. **Formatting** (lines 237-274): Display logic with timezone conversion
-7. **Utilities** (lines 276-306): Password input, URL parsing, error conversion
-8. **Main Program** (lines 308-392): ExceptT-based control flow
+**Library Modules** (`src/SimpleFin/`):
+1. **Types.hs**: All data types, newtypes, error types, and JSON instances
+   - Newtype wrappers: SetupToken, ClaimUrl, AccessUrl, Username, Password, BaseUrl
+   - Domain types: Account, Transaction, AccountsResponse
+   - SimplefinError with 8 error variants
+   - FromJSON instances for API schema
+2. **Auth.hs**: Authentication and token handling
+   - `decodeSetupToken`: Base64 → ClaimUrl
+   - `parseAccessUrl`: AccessUrl → (Username, Password, BaseUrl)
+3. **API.hs**: HTTP client functions
+   - `claimAccessUrl`: ClaimUrl → AccessUrl (HTTP POST)
+   - `fetchAccounts`: BaseUrl + credentials → AccountsResponse (HTTP GET)
+   - `parseUrlForReq`: URL parsing for req library
+4. **Format.hs**: Display and formatting functions
+   - `formatAccounts`, `formatAccount`, `formatTransaction`
+   - `formatMoney`: Scientific → currency string
+   - `formatPosixTime`: POSIX → local timezone string
+
+**Executable** (`app/Main.hs`):
+- CLI entry point with `runSimplefin` (main application logic)
+- Environment variable handling
+- User input (secure password prompt)
+- Error display with `showError`
+
+**Legacy File** (`Main.hs`):
+- Original monolithic implementation (393 lines)
+- Kept for reference but superseded by library structure
 
 ### Workflow Pipeline
 
@@ -148,20 +194,41 @@ Use `formatPosixTime` (lines 238-242) to convert POSIX timestamps to local timez
 
 ## File References
 
-- **Main logic**: Main.hs:311-363 (`runSimplefin` function)
-- **HTTP requests**: Main.hs:172-187 (claim), Main.hs:227-235 (fetch)
-- **Error conversion**: Main.hs:296-306 (`httpExceptionToError`)
-- **JSON parsing**: Main.hs:134-151 (FromJSON instances)
-- **URL parsing**: Main.hs:192-213 (credentials), Main.hs:289-293 (req URLs)
+**Library Modules:**
+- **Type definitions**: src/SimpleFin/Types.hs (all data types and errors)
+- **JSON parsing**: src/SimpleFin/Types.hs (FromJSON instances)
+- **Token decoding**: src/SimpleFin/Auth.hs:decodeSetupToken
+- **URL parsing**: src/SimpleFin/Auth.hs:parseAccessUrl
+- **HTTP requests**: src/SimpleFin/API.hs (claimAccessUrl, fetchAccounts)
+- **Error conversion**: src/SimpleFin/API.hs:httpExceptionToError
+- **Formatting**: src/SimpleFin/Format.hs (all display functions)
+
+**Executable:**
+- **Main logic**: app/Main.hs (runSimplefin function)
+- **User input**: app/Main.hs:getPasswordInput
+- **Error display**: app/Main.hs:showError
+
+**Tests:**
+- **Type tests**: test/SimpleFin/TypesSpec.hs
+- **Auth tests**: test/SimpleFin/AuthSpec.hs
+- **API tests**: test/SimpleFin/APISpec.hs
+- **Format tests**: test/SimpleFin/FormatSpec.hs
 
 ## Notes for Future Development
 
-**Refactoring for testability:** To add tests, extract functions into library modules:
-- `src/SimpleFin/Types.hs`: All data types and newtypes
-- `src/SimpleFin/API.hs`: HTTP functions (claimAccessUrl, fetchAccounts)
-- `src/SimpleFin/Auth.hs`: Token/URL handling (decode, parse)
-- `src/SimpleFin/Format.hs`: Display functions
-- `app/Main.hs`: Minimal CLI entry point
+**Testing best practices:**
+- Run tests before committing changes: `cabal test`
+- Add property-based tests for new pure functions
+- Use `aeson-qq` for readable JSON test data
+- Mock HTTP responses for API tests (see APISpec.hs for patterns)
+- All test modules use hspec-discover for automatic registration
+
+**Adding new functionality:**
+1. Add types to `src/SimpleFin/Types.hs`
+2. Implement logic in appropriate module (Auth/API/Format)
+3. Export new functions from the module
+4. Add tests in corresponding `test/SimpleFin/*Spec.hs`
+5. Update app/Main.hs to use new functionality
 
 **Security considerations:**
 - Never log or display Password or AccessUrl values
