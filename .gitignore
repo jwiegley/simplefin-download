@@ -1,0 +1,31 @@
+# Haskell build artifacts
+dist/
+dist-newstyle/
+.stack-work/
+*.cabal
+*.hi
+*.o
+*.dyn_hi
+*.dyn_o
+.ghc.environment.*
+
+# Nix
+result
+result-*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.envrc
+.envrc.cache
+.direnv/
+
+# Test/development
+test-output/
+*.log

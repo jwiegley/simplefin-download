@@ -1,0 +1,86 @@
+name: simplefin-download
+version: 1.0.0
+github: jwiegley/simplefin-download
+license: MIT
+author: John Wiegley
+maintainer: johnw@newartisans.com
+synopsis: SimpleFin API client for retrieving account and transaction data
+description: |
+  Command-line client for the SimpleFin API that retrieves account balances
+  and transaction data. Supports setup token claiming and access URL reuse
+  via environment variables.
+
+dependencies:
+  - base >= 4.7 && < 5
+  - req >= 3.13
+  - aeson >= 2.2
+  - text >= 2.0
+  - bytestring >= 0.11
+  - base64-bytestring >= 1.2
+  - network-uri >= 2.6
+  - modern-uri >= 0.3
+  - time >= 1.12
+  - mtl >= 2.3
+  - http-client >= 0.7
+  - http-types >= 0.12
+  - scientific >= 0.3
+  - transformers >= 0.6
+  - exceptions >= 0.10
+
+default-extensions:
+  - OverloadedStrings
+  - DeriveGeneric
+  - LambdaCase
+  - ImportQualifiedPost
+  - RecordWildCards
+  - TypeApplications
+  - ScopedTypeVariables
+  - DeriveAnyClass
+  - DerivingStrategies
+  - GeneralizedNewtypeDeriving
+
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Widentities
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wpartial-fields
+  - -Wredundant-constraints
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - SimpleFin.Types
+    - SimpleFin.Auth
+    - SimpleFin.API
+    - SimpleFin.Format
+
+executables:
+  simplefin-download:
+    main: Main.hs
+    source-dirs: app
+    dependencies:
+      - simplefin-download
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
+tests:
+  simplefin-download-test:
+    main: Spec.hs
+    source-dirs: test
+    dependencies:
+      - simplefin-download
+      - hspec >= 2.11
+      - hspec-discover >= 2.11
+      - QuickCheck >= 2.14
+      - aeson-qq >= 0.8
+      - quickcheck-instances >= 0.3
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    build-tools:
+      - hspec-discover
